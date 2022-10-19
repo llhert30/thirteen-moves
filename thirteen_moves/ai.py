@@ -3,6 +3,26 @@ import random
 from board import Board
 
 
+LOWERBOUND, EXACT, UPPERBOUND = -1, 0, 1
+
+
+def position_id(tiles):
+    stiles = sorted(tiles)
+    if not stiles:
+        return 0
+    s = stiles[0]
+    for tile in stiles[1:]:
+        s *= 16
+        s += tile
+    return s
+
+
+def position_id_both(tiles):
+    id1 = position_id(tiles[0])
+    id2 = position_id(tiles[1])
+    return id1*1048576+id2
+
+
 def clone_tiles(tiles):
     return tiles[0].copy(), tiles[1].copy()
 
@@ -73,11 +93,26 @@ def is_winning(tiles):
 
 
 def evaluate(tiles):
+    # higher score is better for red
     return len(tiles[1])-len(tiles[0])
 
 
 # TODO: refactor minimax function so it doesn't repeat everything twice
-def minimax(tiles, depth, alpha, beta, maximizing_player, moves, eval_func):
+def minimax(tiles, depth, alpha, beta, maximizing_player, moves, eval_func, tt):
+    pos_id = position_id_both(tiles)
+    lookup = tt.get(pos_id, None)
+    if lookup is not None:
+        flag, move, value, d = lookup
+        if d == depth:
+            if flag == EXACT:
+                return move, value
+            elif flag == LOWERBOUND:
+                alpha = max(alpha, value)
+            elif flag == UPPERBOUND:
+                beta = min(beta, value)
+            if alpha >= beta:
+                return move, value
+
     winning = is_winning(tiles)
     if winning:
         if winning == 1:
@@ -105,6 +140,7 @@ def minimax(tiles, depth, alpha, beta, maximizing_player, moves, eval_func):
         else:
             moves_ = valid_moves
 
+        a = alpha
         best_move = valid_moves[0]
         max_eval = -math.inf
         for move_ in moves_:
@@ -115,17 +151,21 @@ def minimax(tiles, depth, alpha, beta, maximizing_player, moves, eval_func):
                 clone = clone_tiles(tiles)
                 perform_move(clone, True, move)
 
-            current_eval = minimax(clone, depth - 1, alpha, beta, False, moves+1, eval_func)[1]
+            current_eval = minimax(clone, depth - 1, a, beta, False, moves+1, eval_func, tt)[1]
             if current_eval > max_eval:
                 max_eval = current_eval
                 best_move = move
-            alpha = max(alpha, current_eval)
-            if beta <= alpha:
+            a = max(a, current_eval)
+            if beta <= a:
                 break
+
+        tt[pos_id] = (UPPERBOUND if (max_eval <= alpha) else (LOWERBOUND if (max_eval >= beta) else EXACT), best_move, max_eval, depth)
         return best_move, max_eval
 
     else:
         valid_moves = get_valid_moves(tiles, False)
+        if not moves:
+            valid_moves = valid_moves[:7]
         random.shuffle(valid_moves)
 
         if depth > 1:
@@ -138,6 +178,7 @@ def minimax(tiles, depth, alpha, beta, maximizing_player, moves, eval_func):
         else:
             moves_ = valid_moves
 
+        b = beta
         best_move = valid_moves[0]
         min_eval = math.inf
         for move_ in moves_:
@@ -148,15 +189,16 @@ def minimax(tiles, depth, alpha, beta, maximizing_player, moves, eval_func):
                 clone = clone_tiles(tiles)
                 perform_move(clone, False, move)
 
-            current_eval = minimax(clone, depth - 1, alpha, beta, True, moves+1, eval_func)[1]
+            current_eval = minimax(clone, depth - 1, alpha, b, True, moves+1, eval_func, tt)[1]
             if current_eval < min_eval:
                 min_eval = current_eval
                 best_move = move
-            beta = min(beta, current_eval)
-            if beta <= alpha:
+            b = min(b, current_eval)
+            if b <= alpha:
                 break
+        tt[pos_id] = (UPPERBOUND if (min_eval <= alpha) else (LOWERBOUND if (min_eval >= beta) else EXACT), best_move, min_eval, depth)
         return best_move, min_eval
 
 
 def play(board, maximizing_player, moves, depth):
-    return minimax(board.tiles, depth, -math.inf, math.inf, maximizing_player, moves, evaluate)
+    return minimax(board.tiles, depth, -math.inf, math.inf, maximizing_player, moves, evaluate, {})
