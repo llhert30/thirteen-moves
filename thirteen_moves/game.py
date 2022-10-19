@@ -14,13 +14,13 @@ TILE_RED = "R"
 
 # List of AI players, if both are included AI plays against itself
 # Possible options: `TILE_BLUE`, `TILE_RED`
-AI_PLAYER = [TILE_BLUE]
+AI_PLAYER = [TILE_RED]
 
 # Depth of each AI player
-DEPTHS = {TILE_BLUE: 8, TILE_RED: 8}
+DEPTHS = {TILE_BLUE: 10, TILE_RED: 10}
 
 # Min time for an AI move so it feels natural
-wait = 0.8
+wait = 0.7
 
 # First move (doesn't work right now)
 RED_FIRST_MOVE = [1, 6]
@@ -56,8 +56,12 @@ class Game:
         self.new_game_text = Text("New Game", self.x_center, y + self.height * 15/24, GRAY, WHITE, font_size=40)
 
     @classmethod
-    def new(cls, x=0, y=0, width=500, height=600, tile_padding=0.07, x_center=250):
+    def new(cls, x=0, y=0, width=None, height=None, tile_padding=0.07, x_center=250):
         board = Board.new()
+        if width is None:
+            width = board.WIDTH * 100
+        if height is None:
+            height = board.HEIGHT * 100
         return cls(board, x, y, width, height, tile_padding, x_center)
 
     @staticmethod
@@ -206,7 +210,7 @@ class Game:
                 time.sleep(wait-(end-start))
             if end-start < wait:
                 time.sleep(wait-(end-start))
-            print("time:", end-start, "eval:", round(score*10, 2))
+            print("depth:", DEPTHS[self.player], "time:", end-start, "eval:", round(score, 2))
             self.board.perform_move(self.player, move)
             self.tiles = self.board.to_array()
             self.switch_player()
