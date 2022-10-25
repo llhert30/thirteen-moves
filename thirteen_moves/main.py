@@ -3,7 +3,7 @@ from game import Game
 import pygame
 
 
-LIGHT_GRAY = (221, 221, 221)
+LIGHT_GRAY = (240, 240, 240)
 
 
 def main():
