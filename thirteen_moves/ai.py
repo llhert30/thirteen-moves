@@ -2,8 +2,9 @@ import math
 import random
 from board import Board
 
-
 LOWERBOUND, EXACT, UPPERBOUND = -1, 0, 1
+tile_row_vals_red = [1.0, 1.1, 1.05, 1.1, 1.0]
+tile_row_vals_blue = [1.0, 1.1, 1.05, 1.1, 1.0]
 
 
 def position_id(tiles):
@@ -11,9 +12,10 @@ def position_id(tiles):
     if not stiles:
         return 0
     s = stiles[0]
+    n = s+0
     for tile in stiles[1:]:
         s *= 16
-        s += tile
+        s += (tile-n)
     return s
 
 
@@ -92,13 +94,17 @@ def is_winning(tiles):
     return False
 
 
-def evaluate(tiles):
-    # higher score is better for red
+def evaluate_simple(tiles):
     return len(tiles[1])-len(tiles[0])
 
 
+def evaluate(tiles):
+    # higher score is better for red
+    return sum(tile_row_vals_blue[t % 5] for t in tiles[1])-sum(tile_row_vals_red[t % 5] for t in tiles[0])
+
+
 # TODO: refactor minimax function so it doesn't repeat everything twice
-def minimax(tiles, depth, alpha, beta, maximizing_player, moves, eval_func, tt):
+def minimax(tiles, depth, origDepth, alpha, beta, maximizing_player, moves, eval_func, tt):
     pos_id = position_id_both(tiles)
     lookup = tt.get(pos_id, None)
     if lookup is not None:
@@ -126,6 +132,15 @@ def minimax(tiles, depth, alpha, beta, maximizing_player, moves, eval_func, tt):
     if depth == 0:
         return None, eval_func(tiles)
 
+    if moves >= 17 and depth != origDepth:
+        for t in tiles[0]:
+            if t // 5 > 12 - moves // 2:
+                break
+        else:
+            if len(tiles[1]) > (26-moves) // 2:
+                # blue can never reach the other side or take all enemy pieces in the moves left
+                return None, 10
+
     if maximizing_player:
         valid_moves = get_valid_moves(tiles, True)
         random.shuffle(valid_moves)
@@ -151,7 +166,7 @@ def minimax(tiles, depth, alpha, beta, maximizing_player, moves, eval_func, tt):
                 clone = clone_tiles(tiles)
                 perform_move(clone, True, move)
 
-            current_eval = minimax(clone, depth - 1, a, beta, False, moves+1, eval_func, tt)[1]
+            current_eval = minimax(clone, depth - 1, origDepth, a, beta, False, moves+1, eval_func, tt)[1]
             if current_eval > max_eval:
                 max_eval = current_eval
                 best_move = move
@@ -189,7 +204,7 @@ def minimax(tiles, depth, alpha, beta, maximizing_player, moves, eval_func, tt):
                 clone = clone_tiles(tiles)
                 perform_move(clone, False, move)
 
-            current_eval = minimax(clone, depth - 1, alpha, b, True, moves+1, eval_func, tt)[1]
+            current_eval = minimax(clone, depth - 1, origDepth, alpha, b, True, moves+1, eval_func, tt)[1]
             if current_eval < min_eval:
                 min_eval = current_eval
                 best_move = move
@@ -201,4 +216,4 @@ def minimax(tiles, depth, alpha, beta, maximizing_player, moves, eval_func, tt):
 
 
 def play(board, maximizing_player, moves, depth):
-    return minimax(board.tiles, depth, -math.inf, math.inf, maximizing_player, moves, evaluate, {})
+    return minimax(board.tiles, depth, depth, -math.inf, math.inf, maximizing_player, moves, evaluate, {})

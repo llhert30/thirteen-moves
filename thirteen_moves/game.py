@@ -3,6 +3,7 @@ import pygame
 from visual_utils import alpha_rect, centered_text, set_cursor_to_default, Text
 from ai import play
 import time
+import random
 
 
 END = (32, 32, 32)
@@ -20,10 +21,10 @@ AI_PLAYER = [TILE_RED]
 DEPTHS = {TILE_BLUE: 10, TILE_RED: 10}
 
 # Min time for an AI move so it feels natural
-wait = 0.7
+wait = 0.5
 
-# First move (doesn't work right now)
-RED_FIRST_MOVE = [1, 6]
+# Only winning first moves (depth 26)
+first_blue_move = [[1, 20], [3, 24]]
 
 YELLOW = (246, 190, 0)
 RED = (135, 34, 34)
@@ -197,8 +198,14 @@ class Game:
             self.display(surface, events)
             pygame.display.flip()
             start = time.time()
-            if self.moves < 0:
-                move, score = RED_FIRST_MOVE, 0
+            # Random first moves since they don't rly matter
+            if self.moves == 0:
+                move, score = random.choice(first_blue_move), 0
+            elif self.moves == 1:
+                if self.board.tiles[0][1] == 20:
+                    move, score = [0, 6], 0
+                else:
+                    move, score = [4, 8], 0
             else:
                 move, score = play(self.board, self.player == TILE_RED, self.moves, depth=DEPTHS[self.player])
             end = time.time()
